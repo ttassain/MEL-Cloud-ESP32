@@ -17,10 +17,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 
 // WiFi
 const char* ssid = "E=mc2";
-const char* password = "XXXXXXXXXXXXXXXXXXXX";
+const char* password = "6969696969696969";
 
 // Mel Cloud
-String contextKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+String contextKey = "0930027CDEA841D4A69E08544432F7";
 int buildingId = 163047;
 int splitIds[] = { 238535, 238531, 238517 };
 String splitNames[] = { "Bureau", "Chambre", "Salon" };
@@ -48,8 +48,8 @@ const int BUTTON_LEFT = 33;
 const int BUTTON_OK = 14;
 const int BUTTON_SET = 26;
 const int BUTTON_CLEAR = 25;
-const int LED_RED = 15;
-const int LED_GREEN = 2;
+const int LED_RED = 2;
+const int LED_GREEN = 15;
 const int BUZZER = 4;
 
 enum Action { NONE, TEST, ERROR, REFRESH_SCREEN, GET_DEVICES, POWER, TEMPERATURE, FAN };
