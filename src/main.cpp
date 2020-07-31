@@ -16,11 +16,11 @@ HTTPClient http;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 
 // WiFi
-const char* ssid = "E=mc2";
-const char* password = "6969696969696969";
+const char* ssid = "WIFI_NAME";
+const char* password = "WIFI_PASSWORD";
 
 // Mel Cloud
-String contextKey = "0930027CDEA841D4A69E08544432F7";
+String contextKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 int buildingId = 163047;
 int splitIds[] = { 238535, 238531, 238517 };
 String splitNames[] = { "Bureau", "Chambre", "Salon" };
@@ -52,7 +52,9 @@ const int LED_RED = 2;
 const int LED_GREEN = 15;
 const int BUZZER = 4;
 
-enum Action { NONE, TEST, ERROR, REFRESH_SCREEN, GET_DEVICES, POWER, TEMPERATURE, FAN };
+enum Action { NONE, TEST, ERROR, REFRESH_SCREEN, GET_DEVICES, SET_DEVICE, SET_ALL_DEVICES };
+
+int flag = 0;
 
 unsigned long lastDevicesRefresh = millis();
 unsigned long lastMillisButton = 0;
@@ -105,7 +107,7 @@ void displayDevices() {
 	}
 
 	display.drawFastHLine(0, 52, 128, SSD1306_WHITE);
-	printOled(0, FUNCTION_ALL, "ON/OFF global test");
+	printOled(0, FUNCTION_ALL, "ON/OFF global");
 
 	display.display();
 	action = NONE;
@@ -155,22 +157,30 @@ void buttonDownInterrupt() {
 }
 
 void buttonRightInterrupt() {
-	if (isInterruptReady() && selectedFunction != FUNCTION_ALL) {
-		selectedDevice = selectedDevice + 1;
-		if (selectedDevice > 2) {
-			selectedDevice = 0;
+	if (isInterruptReady()) {
+		if (selectedFunction == FUNCTION_ALL) {
+			// TODO changer de sous menu
+		} else {
+			selectedDevice = selectedDevice + 1;
+			if (selectedDevice > 2) {
+				selectedDevice = 0;
+			}
+			action = REFRESH_SCREEN;
 		}
-		action = REFRESH_SCREEN;
 	}
 }
 
 void buttonLeftInterrupt() {
-	if (isInterruptReady()  && selectedFunction != FUNCTION_ALL) {
-		selectedDevice = selectedDevice - 1;
-		if (selectedDevice < 0) {
-			selectedDevice = 2;
+	if (isInterruptReady()) {
+		if (selectedFunction == FUNCTION_ALL) {
+			// TODO changer de sous menu
+		} else {
+			selectedDevice = selectedDevice - 1;
+			if (selectedDevice < 0) {
+				selectedDevice = 2;
+			}
+			action = REFRESH_SCREEN;
 		}
-		action = REFRESH_SCREEN;
 	}
 }
 
@@ -186,23 +196,30 @@ void buttonSetInterrupt() {
 	if (isInterruptReady()) {
 		if (selectedFunction == FUNCTION_POWER) {
 			power[selectedDevice] = power[selectedDevice] ? false : true;
-			action = POWER;
+			flag += FLAG_POWER;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_TEMPERATURE) {
 			setTemperature[selectedDevice] = setTemperature[selectedDevice] + 1.00;
 			if (setTemperature[selectedDevice] > 26) {
 				setTemperature[selectedDevice] = 16;
 			}
-			action = TEMPERATURE;
+			flag += FLAG_DESIRED_TEMPERATURE;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_FAN_SPEED) {
 			setFanSpeed[selectedDevice] = setFanSpeed[selectedDevice] + 1;
 			if (setFanSpeed[selectedDevice] > numberOfFanSpeeds[selectedDevice]) {
 				setFanSpeed[selectedDevice] = 0;
 			}
-			action = FAN;
+			flag += FLAG_FAN_SPEED;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_VANE) {
 			// TODO a faire
 		} else if (selectedFunction == FUNCTION_ALL) {
-			// TODO a faire
+			for (int device=0; device <= 2; device++) {
+				power[device] = true;
+			}
+			flag += FLAG_POWER;
+			action = SET_ALL_DEVICES;
 		} 
 	}
 }
@@ -211,23 +228,30 @@ void buttonClearInterrupt() {
 	if (isInterruptReady()) {
 		if (selectedFunction == FUNCTION_POWER) {
 			power[selectedDevice] = power[selectedDevice] ? false : true;
-			action = POWER;
+			flag += FLAG_POWER;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_TEMPERATURE) {
 			setTemperature[selectedDevice] = setTemperature[selectedDevice] - 1.00;
 			if (setTemperature[selectedDevice] < 16) {
 				setTemperature[selectedDevice] = 25;
 			}
-			action = TEMPERATURE;
+			flag += FLAG_DESIRED_TEMPERATURE;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_FAN_SPEED) {
 			setFanSpeed[selectedDevice] = setFanSpeed[selectedDevice] - 1;
 			if (setFanSpeed[selectedDevice] < 0) {
 				setFanSpeed[selectedDevice] = numberOfFanSpeeds[selectedDevice];
 			}
-			action = FAN;
+			flag += FLAG_FAN_SPEED;
+			action = SET_DEVICE;
 		} else if (selectedFunction == FUNCTION_VANE) {
 			// TODO a faire
 		} else if (selectedFunction == FUNCTION_ALL) {
-			// TODO a faire
+			for (int device=0; device <= 2; device++) {
+				power[device] = false;
+			}
+			flag += FLAG_POWER;
+			action = SET_ALL_DEVICES;
 		}
 	}
 }
@@ -345,19 +369,18 @@ void getDevice(int device) {
 	http.end();
 }
 
-void setDevice(int flag) {
-	setBuzy(true);
+void setDevice(int device) {
 	DynamicJsonDocument doc(1024);
 	
-	doc["DeviceID"] = splitIds[selectedDevice];
+	doc["DeviceID"] = splitIds[device];
 	doc["EffectiveFlags"] = flag;
-	doc["Power"] = power[selectedDevice];
-	doc["RoomTemperature"] = roomTemperature[selectedDevice];
-	doc["SetTemperature"] = setTemperature[selectedDevice];
-	doc["SetFanSpeed"] = setFanSpeed[selectedDevice];
-	doc["NumberOfFanSpeeds"] = numberOfFanSpeeds[selectedDevice];
-	doc["VaneHorizontal"] = vaneHorizontal[selectedDevice];
-	doc["VaneVertical"] = vaneVertical[selectedDevice];
+	doc["Power"] = power[device];
+	doc["RoomTemperature"] = roomTemperature[device];
+	doc["SetTemperature"] = setTemperature[device];
+	doc["SetFanSpeed"] = setFanSpeed[device];
+	doc["NumberOfFanSpeeds"] = numberOfFanSpeeds[device];
+	doc["VaneHorizontal"] = vaneHorizontal[device];
+	doc["VaneVertical"] = vaneVertical[device];
 	doc["HasPendingCommand"] = true;
 
 	String payload;
@@ -377,7 +400,21 @@ void setDevice(int flag) {
 		Serial.println("Error on HTTP request");
 		action = ERROR;
 	}
-	
+}
+
+void setSelectedDevice() {
+	setBuzy(true);
+	setDevice(selectedDevice);
+	flag = 0;
+	setBuzy(false);
+}
+
+void setAllDevices() {
+	setBuzy(true);
+	for (int device=0; device <= 2; device++) {
+		setDevice(device);
+	}
+	flag = 0;
 	setBuzy(false);
 }
 
@@ -408,14 +445,11 @@ void loop() {
 		case GET_DEVICES:
 			getAllDevices();
 			break;
-		case POWER:
-			setDevice(FLAG_POWER);
+		case SET_DEVICE:
+			setSelectedDevice();
 			break;
-		case TEMPERATURE:
-			setDevice(FLAG_DESIRED_TEMPERATURE);
-			break;
-		case FAN:
-			setDevice(FLAG_FAN_SPEED);
+		case SET_ALL_DEVICES:
+			setAllDevices();
 			break;
 		case ERROR:
 			bip();
