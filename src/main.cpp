@@ -20,7 +20,7 @@ const char* ssid = "WIFI_NAME";
 const char* password = "WIFI_PASSWORD";
 
 // Mel Cloud
-String contextKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+String contextKey = "YOUR_KEY";
 int buildingId = 163047;
 int splitIds[] = { 238535, 238531, 238517 };
 String splitNames[] = { "Bureau", "Chambre", "Salon" };
@@ -62,10 +62,11 @@ const unsigned long debounceTime = 250;
 boolean isBuzy = false;
 const int REFRESH_DEVICES_TIME_IN_MILLI = 10 * 60 * 1000;
 
-const int FUNCTION_VANE = 2;
-const int FUNCTION_FAN_SPEED = 3;
-const int FUNCTION_TEMPERATURE = 4;
-const int FUNCTION_POWER = 5;
+const int FUNCTION_VANE_VERTICAL = 2;
+const int FUNCTION_VANE_HORIZONTAL = 3;
+const int FUNCTION_FAN_SPEED = 4;
+const int FUNCTION_TEMPERATURE = 5;
+const int FUNCTION_POWER = 6;
 const int FUNCTION_ALL = 7;
 
 int selectedDevice = 0;
@@ -98,15 +99,37 @@ void printOled(int device, int line, String msg) {
 void displayDevices() {
 	display.clearDisplay();
 	for (int device=0; device <= 2; device++) {
+		
+		int vaneH = vaneHorizontal[device];
+		String vaneHorizontalText;
+		if (vaneH == 0) {
+			vaneHorizontalText = "AUTO";
+		} else if (vaneH == 12) {
+			vaneHorizontalText = "MOVE";
+		} else {
+			vaneHorizontalText = String(vaneH) + " / 5";
+		}
+
+		int vaneV = vaneVertical[device];
+		String vaneVerticalText;
+		if (vaneV == 0) {
+			vaneVerticalText = "AUTO";
+		} else if (vaneV == 7) {
+			vaneVerticalText = "MOVE";
+		} else {
+			vaneVerticalText = String(vaneV) + " / 5";
+		}
+	
 		printOled(device, 0, String(splitNames[device]));
 		printOled(device, 1, String(roomTemperature[device]));
-		printOled(device, FUNCTION_VANE, String(vaneHorizontal[device]) + "/" + String(vaneVertical[device]));
-		printOled(device, FUNCTION_FAN_SPEED, String(setFanSpeed[device]) + "/" + String(numberOfFanSpeeds[device]));
+		printOled(device, FUNCTION_VANE_VERTICAL, vaneVerticalText);
+		printOled(device, FUNCTION_VANE_HORIZONTAL, vaneHorizontalText);
+		printOled(device, FUNCTION_FAN_SPEED, setFanSpeed[device] == 0 ? "AUTO" : String(setFanSpeed[device]) + " / " + String(numberOfFanSpeeds[device]));
 		printOled(device, FUNCTION_TEMPERATURE, String(setTemperature[device]));
 		printOled(device, FUNCTION_POWER, power[device] ? "ON" : "OFF");
 	}
 
-	display.drawFastHLine(0, 52, 128, SSD1306_WHITE);
+	//display.drawFastHLine(0, 52, 128, SSD1306_WHITE);
 	printOled(0, FUNCTION_ALL, "ON/OFF global");
 
 	display.display();
@@ -131,8 +154,10 @@ void buttonUpInterrupt() {
 		} else if (selectedFunction == FUNCTION_TEMPERATURE) {
 			selectedFunction = FUNCTION_FAN_SPEED;
 		} else if (selectedFunction == FUNCTION_FAN_SPEED) {
-			selectedFunction = FUNCTION_VANE;
-		} else if (selectedFunction == FUNCTION_VANE) {
+			selectedFunction = FUNCTION_VANE_HORIZONTAL;
+		} else if (selectedFunction == FUNCTION_VANE_HORIZONTAL) {
+			selectedFunction = FUNCTION_VANE_VERTICAL;
+		} else if (selectedFunction == FUNCTION_VANE_VERTICAL) {
 			selectedFunction = FUNCTION_ALL;
 		}
 		action = REFRESH_SCREEN;
@@ -142,15 +167,17 @@ void buttonUpInterrupt() {
 void buttonDownInterrupt() {
 	if (isInterruptReady()) {
 		if (selectedFunction == FUNCTION_ALL) {
-			selectedFunction = FUNCTION_VANE;
+			selectedFunction = FUNCTION_VANE_VERTICAL;
 		} else if (selectedFunction == FUNCTION_POWER) {
 			selectedFunction = FUNCTION_ALL;
 		} else if (selectedFunction == FUNCTION_TEMPERATURE) {
 			selectedFunction = FUNCTION_POWER;
 		} else if (selectedFunction == FUNCTION_FAN_SPEED) {
 			selectedFunction = FUNCTION_TEMPERATURE;
-		} else if (selectedFunction == FUNCTION_VANE) {
+		} else if (selectedFunction == FUNCTION_VANE_HORIZONTAL) {
 			selectedFunction = FUNCTION_FAN_SPEED;
+		} else if (selectedFunction == FUNCTION_VANE_VERTICAL) {
+			selectedFunction = FUNCTION_VANE_HORIZONTAL;
 		}
 		action = REFRESH_SCREEN;
 	}
@@ -212,8 +239,12 @@ void buttonSetInterrupt() {
 			}
 			flag += FLAG_FAN_SPEED;
 			action = SET_DEVICE;
-		} else if (selectedFunction == FUNCTION_VANE) {
+		} else if (selectedFunction == FUNCTION_VANE_HORIZONTAL) {
 			// TODO a faire
+			// Position de 1 a 5, 12 = balayage 0 = auto
+		} else if (selectedFunction == FUNCTION_VANE_VERTICAL) {
+			// TODO a faire
+			// Position de 1 a 5, 7 = balayage, 0 = auto
 		} else if (selectedFunction == FUNCTION_ALL) {
 			for (int device=0; device <= 2; device++) {
 				power[device] = true;
@@ -244,8 +275,12 @@ void buttonClearInterrupt() {
 			}
 			flag += FLAG_FAN_SPEED;
 			action = SET_DEVICE;
-		} else if (selectedFunction == FUNCTION_VANE) {
+		} else if (selectedFunction == FUNCTION_VANE_HORIZONTAL) {
 			// TODO a faire
+			// Position de 1 a 5, 12 = balayage
+		}  else if (selectedFunction == FUNCTION_VANE_VERTICAL) {
+			// TODO a faire
+			// Position de 1 a 5, 7 = balayage
 		} else if (selectedFunction == FUNCTION_ALL) {
 			for (int device=0; device <= 2; device++) {
 				power[device] = false;
