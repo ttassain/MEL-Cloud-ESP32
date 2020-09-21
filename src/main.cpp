@@ -292,10 +292,9 @@ void buttonClearInterrupt() {
 }
 
 void bip() {
-	ledcSetup(0, 1000, 8);
-    ledcWriteTone(0, 1000);
-    delay(50);
-    ledcWrite(0, 0);
+	digitalWrite(BUZZER, LOW);
+    delay(10);
+    digitalWrite(BUZZER, HIGH);
 }
 
 void setBuzy(boolean buzy) {
@@ -359,7 +358,8 @@ void setup() {
 
 	setBuzy(true);
 
-	ledcAttachPin(BUZZER, 0);
+	pinMode(BUZZER, OUTPUT);
+	digitalWrite(BUZZER, HIGH);
 
 	initOled();
 
@@ -465,6 +465,7 @@ void getAllDevices() {
 }
 
 void test() {
+	bip();
 	action = GET_DEVICES;
 }
 
